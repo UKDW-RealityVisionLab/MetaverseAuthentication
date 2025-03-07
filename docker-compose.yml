@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  dutaverse-auth:
+    image: metaverse-authentication:1.0.0
+    container_name: metaverse-authentication
+    build:
+#      context: ./functional/auth-service
+      dockerfile: Dockerfile
+#    expose:
+#      - "8081"
+    ports:
+      - "8080:8080"
+#    environment:
+#      - SPRING_CLOUD_EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-service:8010/eureka
+#    depends_on:
+#      - discovery-service
+#    networks:
+#      - dutaverse-network
+
+networks:
+  dutaverse-network:
+    driver: bridge
+
+#  This is for tunneling api gateway to cloudflare tunnel
+#  Must be commented when running on development environment
+#  tunnel:
+#    external: true

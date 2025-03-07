@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.ukdw</groupId>
-    <artifactId>OAuth2BasedAuth</artifactId>
+    <artifactId>metaverse-authentication</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <parent>
@@ -191,13 +191,28 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
     <build>
-        <finalName>OAuth2BasedAuth</finalName>
+        <finalName>${project.artifactId}-${project.version}</finalName>
         <plugins>
+            <!-- Use Spring Boot plugin for services -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- JAR plugin for packaging the app -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${maven.jar.plugin.version}</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <!-- Specify the main class of your application -->
+                            <Main-Class>org.ukdw.AppMain</Main-Class>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>

@@ -17,7 +17,7 @@ Auth service Backend for metaverse project
 - **Validation**: Input validation using `spring-boot-starter-validation`.
 - **Lombok for Boilerplate Code**: Reduce boilerplate code like getters/setters.
 - **Caching**: Integrated caching with `Ehcache`.
-- **Google Integration**: Use of Google API for external services.
+- **Google Integration**: Use of Google API for external services. (removed)
 - **H2 Database for Testing**: An in-memory H2 database for development and testing purposes.
 
 ## Prerequisites
@@ -55,6 +55,14 @@ Auth service Backend for metaverse project
    ```bash
    mvn spring-boot:run
 
+2. **Create Package**: To Build the apps, run:
+   ```bash
+   mvn package
+
+3. **Deploy on Docker**: To start the development server, run. Make sure Docker already installed:
+   ```bash
+   docker compose up -d dutaverse-auth
+
 ## Acknowledgments & credits
 - **Spring Boot**: For creating easy-to-build and scalable backend systems.
 - **Spring Security**: For powerful and highly customizable authentication and access-control framework.
@@ -62,4 +70,4 @@ Auth service Backend for metaverse project
 - **Hibernate**: For ORM and data persistence.
 - **Project Lombok**: To simplify Java code with annotations.
 - **H2 Databas**e: For easy in-memory database testing.
-- **Google APIs**: For integration with Google services.
+- **Google APIs**: For integration with Google services. 
