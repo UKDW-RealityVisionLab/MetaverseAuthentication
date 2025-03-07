@@ -4,15 +4,16 @@ import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.modelmapper.ModelMapper;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.ukdw.dto.request.auth.SignUpRequest;
 import org.ukdw.dto.user.UserRoleDTO;
-import org.ukdw.entity.GroupEntity;
-import org.ukdw.entity.StudentEntity;
-import org.ukdw.entity.TeacherEntity;
-import org.ukdw.entity.UserAccountEntity;
+import org.ukdw.entity.*;
+import org.ukdw.exception.RequestParameterErrorException;
 import org.ukdw.repository.GroupRepository;
 import org.ukdw.repository.StudentRepository;
 import org.ukdw.repository.TeacherRepository;
@@ -32,7 +33,6 @@ public class UserAccountService {
 
     private static final Logger log = LogManager.getLogger(UserAccountService.class);
     private final UserAccountRepository userAccountRepository;
-    private final GroupRepository groupRepository;
 
     @Transactional
     public List<UserAccountEntity> listUserAccount() {
@@ -41,7 +41,12 @@ public class UserAccountService {
 
     @Transactional
     public UserAccountEntity createUserAccount(UserAccountEntity userAccount) {
-        return userAccountRepository.save(userAccount);
+        try{
+            var newAccount = userAccountRepository.save(userAccount);
+            return newAccount;
+        }catch (DataIntegrityViolationException ex){
+            throw new RequestParameterErrorException("A User with the same email or username already exists.");
+        }
     }
 
     @Transactional
@@ -51,10 +56,6 @@ public class UserAccountService {
 
         if(userOpt.isPresent()){
             UserAccountEntity user = userOpt.get();
-//            // Remove the user from its groups
-//            for (GroupEntity group : user.getGroups()) {
-//                group.getUsers().remove(user);
-//            }
 
             // Now delete the user
             userAccountRepository.delete(user);
@@ -80,26 +81,6 @@ public class UserAccountService {
         UserAccountEntity user = userOpt.get();
         UserAccountEntity updatedUser = user;
 
-        if(user instanceof StudentEntity){
-            StudentEntity student = (StudentEntity) user;
-            if (updateRequest.getName() != null) {
-                student.setName(updateRequest.getName());
-            }
-            if (updateRequest.getStudentId() != null) {
-                student.setStudentId(updateRequest.getStudentId());
-            }
-            updatedUser = student;
-        } else if (user instanceof TeacherEntity){
-            TeacherEntity teacher = (TeacherEntity) user;
-            if (updateRequest.getName() != null) {
-                teacher.setName(updateRequest.getName());
-            }
-            if (updateRequest.getTeacherId() != null) {
-                teacher.setTeacherId(updateRequest.getTeacherId());
-            }
-            updatedUser = teacher;
-        }
-
         if (updateRequest.getEmail() != null) {
             user.setEmail(updateRequest.getEmail());
         }
@@ -109,66 +90,31 @@ public class UserAccountService {
         if (updateRequest.getUsername() != null) {
             user.setUsername(updateRequest.getUsername());
         }
-//        if (updateRequest.getRegNumber() != null) {
-//            user.setRegNumber(updateRequest.getRegNumber());
-//        }
-//        if (updateRequest.getImageUrl() != null) {
-//            user.setImageUrl(updateRequest.getImageUrl());
-//        }
-//        if (updateRequest.getDayOfBirth() != null) {
-//            user.setDayOfBirth(updateRequest.getDayOfBirth());
-//        }
-//        if (updateRequest.getBirthPlace() != null) {
-//            user.setBirthPlace(updateRequest.getBirthPlace());
-//        }
-//        if (updateRequest.getAddress() != null) {
-//            user.setAddress(updateRequest.getAddress());
-//        }
-//        if (updateRequest.getGender() != null) {
-//            user.setGender(updateRequest.getGender());
-//        }
-//        if (updateRequest.getRegisterYear() != null) {
-//            user.setRegisterYear(updateRequest.getRegisterYear());
-//        }
-//        if (updateRequest.getEmploymentNumber() != null) {
-//            user.setEmploymentNumber(updateRequest.getEmploymentNumber());
-//        }
-//        if (updateRequest.getUrlGoogleScholar() != null) {
-//            user.setUrlGoogleScholar(updateRequest.getUrlGoogleScholar());
-//        }
 
         // Save the updated user entity
         userAccountRepository.save(updatedUser);
         return true;
     }
 
-    public boolean addUserGroup(long userId, long groupId){
-        Optional<UserAccountEntity> userOpt = userAccountRepository.findById(userId);
-        Optional<GroupEntity> groupOpt = groupRepository.findById(groupId);
-        if(userOpt.isPresent() && groupOpt.isPresent()){
-            UserAccountEntity user = userOpt.get();
-            GroupEntity group = groupOpt.get();
-            Set<GroupEntity> existingGroups = user.getGroups();
-            existingGroups.add(group);
+    public UserDetailsService userDetailsService() {
+        return value -> {
+            UserAccountEntity accountEntity;
 
-            userAccountRepository.save(user);
-            return true;
-        }
-        return false;
-    }
+            // Check if the value contains '@' to identify it as an email
+            if (value.contains("@")) {
+                accountEntity = userAccountRepository.findByEmail(value);
+                if(accountEntity == null){
+                    throw new UsernameNotFoundException("User not found with email: " + value);
+                }
+            } else {
+                accountEntity = userAccountRepository.findByUsername(value)
+                        .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + value));
+            }
 
-    public boolean removeUserGroup(long userId, long groupId){
-        Optional<UserAccountEntity> userOpt = userAccountRepository.findById(userId);
-        Optional<GroupEntity> groupOpt = groupRepository.findById(groupId);
-        if(userOpt.isPresent() && groupOpt.isPresent()){
-            UserAccountEntity user = userOpt.get();
-            GroupEntity group = groupOpt.get();
-            Set<GroupEntity> existingGroups = user.getGroups();
-            existingGroups.remove(group);
+//            UserAccountEntity accountEntity = userAccountRepository.findByUsername(username)
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            userAccountRepository.save(user);
-            return true;
-        }
-        return false;
+            return new CustomUserDetails(accountEntity);
+        };
     }
 }

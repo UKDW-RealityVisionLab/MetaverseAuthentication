@@ -1,7 +1,9 @@
 package org.ukdw.dto.response;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Creator: dendy
@@ -11,6 +13,8 @@ import lombok.Data;
 
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class AppsCheckPermissionResponse {
     private boolean status;
 }

@@ -4,7 +4,6 @@
  * Time:9:52
  * Description: group
  */
-
 package org.ukdw.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
@@ -14,7 +13,6 @@ import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 @Setter
@@ -23,11 +21,13 @@ import java.util.Set;
 @Table(name = "groups")
 public class GroupEntity implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "GROUP_SEQ")
-    @SequenceGenerator(name = "GROUP_SEQ", sequenceName = "GROUP_SEQ", allocationSize = 1)
+//    @GeneratedValue(strategy = GenerationType.IDENTITY, generator = "GROUP_SEQ")
+//    @SequenceGenerator(name = "GROUP_SEQ", sequenceName = "GROUP_SEQ", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false, unique = true)
     private long id;
 
-    @Column(name = "groupname", nullable = false)
+    @Column(name = "groupname", nullable = false, unique = true)
     private String groupname;
 
     @ManyToMany(mappedBy = "groups")
@@ -38,13 +38,13 @@ public class GroupEntity implements Serializable {
     @Column(name = "permission", columnDefinition = "BIGINT DEFAULT 0")
     private long permission;
 
-    /**
-     * Get resources based on permissions.
-     * @return Map of permission bit values to names.
-     */
-    public Map<Long, String> getResources() {
-        return ResourceConstants.loadResourceNames(this.permission);
-    }
+//    /**
+//     * Get resources based on permissions.
+//     * @return Map of permission bit values to names.
+//     */
+//    public Map<Long, String> getResources() {
+//        return ResourceConstants.loadResourceNames(this.permission);
+//    }
 
     /**
      * <p>Add roles/permissions using bitwise OR </p>

@@ -4,12 +4,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-/**
- * Creator: dendy
- * Date: 7/11/2020
- * Time: 12:25 PM
- * description : authentication related exception. all authentication related anomaly should throw this error.
- */
 @ResponseStatus(HttpStatus.FORBIDDEN)
 public class AuthenticationExceptionImpl extends AuthenticationException {
 

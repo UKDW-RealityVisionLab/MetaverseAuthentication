@@ -32,9 +32,9 @@ spring:
           use_query_cache: true
       jakarta.persistence.sharedCache.mode: ENABLE_SELECTIVE
   #for dummy data
-  sql:
-    init:
-      data-locations: classpath:data-sample.sql
+#  sql:
+#    init:
+#      data-locations: classpath:data-sample.sql
 
 app:
   auth:

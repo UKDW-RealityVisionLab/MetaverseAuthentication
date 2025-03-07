@@ -3,9 +3,11 @@ package org.ukdw.config;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,6 +24,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import lombok.RequiredArgsConstructor;
 import org.ukdw.filter.TokenAuthenticationFilter;
 import org.ukdw.services.AuthService;
+import org.ukdw.services.UserAccountService;
 
 import java.util.List;
 
@@ -42,17 +45,19 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
-    private final AuthService authService;
+    private final UserAccountService userAccountService;
     private final TokenAuthenticationFilter tokenAuthenticationFilter;
     @Qualifier("delegateAuthenticationEntryPoint")
     private final AuthenticationEntryPoint authEntryPoint;
 
     private static final String[] ENDPOINT_WHITELIST = {
-        "/auth/signin",
-        "auth/signup/student",
-        "auth/signup/teacher",
-        "/refreshaccesstoken",
-        "/h2-console/**"
+            "/auth/signin",
+            "/auth/signup/**",
+            "/auth/verify",
+            "/auth/refresh-token",
+            "/auth/apps-check-permission",
+            "/auth/check-permission",
+            "/h2-console/**"
     };
 
     //https://medium.com/@truongbui95/jwt-authentication-and-authorization-with-spring-boot-3-and-spring-security-6-2f90f9337421
@@ -83,14 +88,20 @@ public class SecurityConfiguration {
     }
 
     @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(authService.userDetailsService());
+        authProvider.setUserDetailsService(userAccountService.userDetailsService());
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
 
-//    https://www.baeldung.com/spring-cors
+    //    https://www.baeldung.com/spring-cors
     /*We can configure CORS to override the default Spring Security CORS handling.
     For that, we need to add a CorsConfigurationSource bean that takes care of the CORS configuration
     using a CorsConfiguration instance. The http.cors() method uses CorsFilter if a corsFilter

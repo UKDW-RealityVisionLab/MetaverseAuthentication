@@ -1,74 +1,43 @@
 package org.ukdw.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import org.hibernate.annotations.Cache;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
-import org.hibernate.annotations.Type;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import lombok.*;
 
-import java.util.Date;
-
-/**
-
- * Creator: dendy
- * Date: 8/4/2020
- * Time: 1:59 PM
- * Description : taken from Table Mahasiswa of srm rdb
- */
-@Setter
 @Getter
-@Entity(name = "student")
-public class StudentEntity extends UserAccountEntity{
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+public class StudentEntity {
 
-    @Column(name = "student_id", nullable = false)
-    private String studentId;
+    @Id
+    @Column(name = "user_id")
+    private long userId;
 
-    @Column(name="register_year",columnDefinition="char(4)")
-    String registerYear;
+    @Column(name = "first_name")
+    private String firstName;
 
-    @Column(name="name")
-    String name;
+    @Column(name = "last_name")
+    private String lastName;
 
-    @Column(name="gender")
-    String gender;
+    private String nim;
 
-    @Column(name="day_of_birth")
-    String dayOfBirth;
+    @Column(name = "phone_number")
+    private String phoneNumber;
 
-    @Column(name="birth_place")
-    String birthPlace;
+    private String address;
 
-    @Column(name="address")
-    String address;
+    private String city;
 
-    @Column(name="input_date")
-    Date inputDate;
+    private String region;
 
-    public StudentEntity() {}
+    private String country;
 
-    public StudentEntity(
-            String username,
-            String password,
-            String regNumber,
-            String email,
-            String imageUrl,
-            String studentId,
-            String registerYear,
-            String name,
-            String gender,
-            String dayOfBirth,
-            String birthPlace,
-            String address
-    ) {
-        super(username, password, regNumber, email, imageUrl);
-        this.studentId = studentId;
-        this.registerYear = registerYear;
-        this.name = name;
-        this.gender = gender;
-        this.dayOfBirth = dayOfBirth;
-        this.birthPlace = birthPlace;
-        this.address = address;
-    }
+    private String zipCode;
+
+    private String gender;
+
 }

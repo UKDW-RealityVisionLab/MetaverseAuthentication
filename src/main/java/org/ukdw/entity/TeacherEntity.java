@@ -1,76 +1,46 @@
 package org.ukdw.entity;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import lombok.*;
 
-import java.util.Date;
-
-/**
- * Creator: dendy
- * Date: 8/4/2020
- * Time: 1:59 PM
- * Description : taken from Table Teacher
- */
-@Setter
 @Getter
-@Entity(name = "teacher")
-public class TeacherEntity extends UserAccountEntity{
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+public class TeacherEntity {
 
-    @Column(name = "teacher_id", nullable = false)
-    private String teacherId;
+    @Id
+    @Column(name = "user_id")
+    private long userId;
 
-    @Column(name = "employment_number")
-    String employment_number;
+    @Column(name = "first_name")
+    private String firstName;
 
-    @Column(name = "name")
-    String name;
+    @Column(name = "last_name")
+    private String lastName;
 
-    @Column(name="gender")
-    String gender;
+    private String nid;
 
-    @Column(name="day_of_birth")
-    String dayOfBirth;
+    @Column(name = "phone_number")
+    private String phoneNumber;
 
-    @Column(name="birth_place")
-    String birthPlace;
+    private String address;
 
-    @Column(name="address")
-    String address;
+    private String city;
 
-    @Column(name="input_date")
-    Date inputDate;
+    private String region;
 
-    @Column(name = "url_google_scholar")
-    String url_google_scholar;
+    private String country;
 
-    public TeacherEntity() {}
+    private String zipCode;
 
-    public TeacherEntity(
-            String username,
-            String password,
-            String regNumber,
-            String email,
-            String imageUrl,
-            String teacherId,
-            String employment_number,
-            String name,
-            String gender,
-            String dayOfBirth,
-            String birthPlace,
-            String address,
-            String url_google_scholar
-    ){
-        super(username, password, regNumber, email, imageUrl);
-        this.teacherId = teacherId;
-        this.employment_number = employment_number;
-        this.name = name;
-        this.gender = gender;
-        this.dayOfBirth = dayOfBirth;
-        this.birthPlace = birthPlace;
-        this.address = address;
-        this.url_google_scholar = url_google_scholar;
-    }
+    private String gender;
+
+    @Column(name = "google_scholar")
+    private String googleScholar;
+
 }

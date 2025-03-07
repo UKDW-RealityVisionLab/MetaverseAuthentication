@@ -2,6 +2,7 @@ package org.ukdw.dto.request.auth;
 
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,8 +19,10 @@ import lombok.Setter;
 @Getter
 public class GroupPermissionRequest {
     @NotNull(message = "group id is required")
-    private long groupId;
+    private Long groupId;
 
-    @NotNull(message = "feature code is required")
-    private long featureCode;
+    @NotNull(message = "permission is required")
+    @PositiveOrZero(message = "Permission must not be negative")
+    private Long permission;
 }
+

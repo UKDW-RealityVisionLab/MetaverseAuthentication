@@ -1,127 +1,52 @@
 package org.ukdw.services;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
-import com.google.api.client.googleapis.auth.oauth2.GoogleTokenResponse;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.ukdw.dto.request.auth.SignUpRequest;
-import org.ukdw.dto.response.RefreshAccessTokenResponse;
-import org.ukdw.dto.user.UserRoleDTO;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.ukdw.dto.request.auth.*;
 import org.ukdw.entity.*;
 import org.ukdw.exception.AuthenticationExceptionImpl;
 import org.ukdw.exception.BadRequestException;
 import org.ukdw.exception.ScNotFoundException;
-import org.ukdw.exception.InvalidTokenException;
-import org.ukdw.filter.EmailValidation;
 import org.ukdw.repository.UserAccountRepository;
-import org.ukdw.util.GoogleTokenVerifier;
-import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+
 import java.text.ParseException;
-import java.time.Instant;
-import java.util.Date;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-
-/**
- * <p>
- * Creator: dendy
- * Date: 8/29/2020
- * Time: 7:52 AM
- * <p>
- * Description : service for authentication & authorization process
- */
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
     private final UserAccountService userAccountService;
-    private final UserRoleService roleService;
-    private final EmailValidation emailValidation;
-    private final GoogleTokenVerifier googleTokenVerifier;
     private final UserAccountRepository userAccountRepository;
-    private final GroupService groupService;
     private final JwtService jwtService;
+    private final StudentService studentService;
+    private final TeacherService teacherService;
+    private final GroupService groupService;
 
-    public StudentEntity signupStudent(SignUpRequest request) {
-        StudentEntity newUser = new StudentEntity(
-                request.getUsername(), request.getPassword(), request.getRegNumber(), request.getEmail(),
-                request.getImageUrl(), request.getStudentId(), request.getRegisterYear(), request.getName(), request.getGender(),
-                request.getDayOfBirth(), request.getBirthPlace(), request.getAddress()
-        );
-        newUser.setInputDate(Date.from(Instant.now()));
-
-
-        GroupEntity studentGroup = groupService.findByGroupname("STUDENT");
-//        studentGroup.addRoleOrPermission(RolePermissionConstants.ROLE_STUDENT);
-        newUser.getGroups().add(studentGroup);
-
-        userAccountService.createUserAccount(newUser);
-        return newUser;
-    }
-
-    public TeacherEntity signupTeacher(SignUpRequest request) {
-        TeacherEntity newUser = new TeacherEntity(
-                request.getUsername(), request.getPassword(), request.getRegNumber(), request.getEmail(), request.getImageUrl(),
-                request.getTeacherId(), request.getEmploymentNumber(), request.getName(), request.getGender(), request.getDayOfBirth(),
-                request.getBirthPlace(), request.getAddress(), request.getUrlGoogleScholar()
-        );
-        newUser.setInputDate(Date.from(Instant.now()));
-
-        GroupEntity teacherGroup = groupService.findByGroupname("TEACHER");
-//        teacherGroup.addRoleOrPermission(RolePermissionConstants.ROLE_TEACHER);
-        newUser.getGroups().add(teacherGroup);
-
-        userAccountService.createUserAccount(newUser);
-        return newUser;
-
-//        var jwt = jwtService.generateToken(user);
-//        return JwtAuthenticationResponse.builder().token(jwt).build();
-    }
-
-    public boolean signUpWithGoogleAuthCode(String authCode, String regNumber, String role, String clientType)
-            throws InvalidTokenException {
-        if (!regNumber.isEmpty() || !role.isEmpty()) {
-            UserRoleDTO userRole = roleService.getRole(role);
-            GoogleTokenResponse response;
-            GoogleIdToken.Payload payload;
-            try {
-                response = googleTokenVerifier.verifyAuthCode(authCode, clientType);
-                payload = response.parseIdToken().getPayload();
-            } catch (IOException e) {
-                throw new InvalidTokenException("invalid authcode");
-            }
-            return !googleTokenVerifier.verifyIdToken(response.getIdToken()).getEmail().isEmpty();
-//            if (emailValidation.emailIsValid(payload.getEmail())) {
-//                return userAccountService.addUserAccount(payload.getEmail(), regNumber, userRole,
-//                        response.getRefreshToken());
-//            }
-//            throw new UnauthorizedException("Email must be ti, si or staff");
-        }
-        throw new BadRequestException("Sorry! NIM or Role can't empty");
-    }
-
-    public boolean normalSignUp(String email, String nomorInduk, String role) throws InvalidTokenException {
-       /* if (!nomorInduk.isEmpty() || !role.isEmpty()) {
-            UserRoleDTO userRole = roleService.getRole(role);
-            if (emailValidation.emailIsValid(email)) {
-                return userAccountService.addUserAccount(email, nomorInduk, userRole, null);
-            }
-            throw new UnauthorizedException("Email must be ti, si or staff");
-        }*/
-        throw new BadRequestException("Sorry! NIM or Role can't empty");
-    }
+    private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
 
     public boolean signOut(String accessToken) {
        /* try {
@@ -141,128 +66,75 @@ public class AuthService {
 //        }
     }
 
-    public UserAccountEntity signIn(String email, String password) throws ScNotFoundException, BadRequestException {
+    public UserAccountEntity signUp(SignUpRequest request) {
+        UserAccountEntity userAccountEntity = new UserAccountEntity(
+                request.getEmail(),
+                request.getUsername(),
+                passwordEncoder.encode(request.getPassword()),
+                request.getRegNumber(),
+                request.getScope()
+        );
+
+        Map<String, Runnable> groupActions = Map.of(
+                "student", () -> {
+                    GroupEntity studentGroup = groupService.findByGroupname("STUDENT");
+                    userAccountEntity.getGroups().add(studentGroup);
+                },
+                "teacher", () -> {
+                    GroupEntity teacherGroup = groupService.findByGroupname("TEACHER");
+                    userAccountEntity.getGroups().add(teacherGroup);
+                }
+        );
+        Optional.ofNullable(request.getScope())
+                .map(groupActions::get)
+                .ifPresent(Runnable::run);
+
+        var userAccountEntitySaved = userAccountService.createUserAccount(userAccountEntity);
+
+        Map<String, Runnable> scopeActions = Map.of(
+                "student", () -> this.createStudent(userAccountEntitySaved.getId(), request),
+                "teacher", () -> this.createTeacher(userAccountEntitySaved.getId(), request)
+        );
+
+        Optional.ofNullable(request.getScope())
+                .map(scopeActions::get)
+                .ifPresent(Runnable::run);
+
+
+        return userAccountEntitySaved;
+    }
+
+    public SigninResponse signIn(String email, String password) throws ScNotFoundException, BadRequestException {
         try {
-//            GoogleTokenResponse response = googleTokenVerifier.verifyAuthCode(authCode, clientType);
-//            GoogleIdToken.Payload payload = response.parseIdToken().getPayload();
-            UserAccountEntity accountEntity = userAccountRepository.findByEmailAndPassword(email, password);
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+
+            UserAccountEntity accountEntity = userAccountRepository.findByEmail(email);
             if (accountEntity == null) {
-                throw new AuthenticationExceptionImpl("email or password is wrong. email :"
-                        + email);
+                throw new AuthenticationExceptionImpl("email or password is wrong. email :" + email);
             }
             CustomUserDetails userDetails = new CustomUserDetails(accountEntity);
+
+            System.out.println(accountEntity.getGroups());
             String token = jwtService.generateToken(userDetails);
             String refreshToken = jwtService.generateRefreshToken(userDetails);
             accountEntity.setAccessToken(token);
             accountEntity.setRefreshToken(refreshToken);
             userAccountRepository.save(accountEntity);
-            return accountEntity;
-           /* UserAccountDTO userAccount = userAccountService.getDetailData(payload.getEmail());
-            UserRoleDTO userRoleDTO = roleService.getRoleByEmail(payload.getEmail());
-
-            if (userAccount != null) {
-                if (response.getRefreshToken() != null) {
-                    userAccount.setRefreshToken(response.getRefreshToken());
-                    userAccountService.updateUserAccount(userAccount);
-                }
-                if (userRoleDTO.getRole().equalsIgnoreCase(AuthoritiesConstants.TEACHER) ||
-                        userRoleDTO.getRole().equalsIgnoreCase(AuthoritiesConstants.ADMIN)) {
-                    DosenDTO dosenDTO = dosenService.getDosenByKodeDosen(userAccount.getIdUser());
-                    return new User(
-                            response.getAccessToken(),
-                            response.getIdToken(),
-                            userAccount.getRefreshToken(),
-                            dosenDTO.getNik(),
-                            dosenDTO.getNama(),
-                            userAccount.getEmail(),
-                            (String) payload.get("picture"),
-                            userRoleDTO.getRole());
-                } else if (userRoleDTO.getRole().equalsIgnoreCase(AuthoritiesConstants.STUDENT)) {
-                    MahasiswaDTO mahasiswaDTO = mahasiswaService.getMahasiswaByNim(userAccount.getIdUser());
-                    return new User(
-                            response.getAccessToken(),
-                            response.getIdToken(),
-                            userAccount.getRefreshToken(),
-                            mahasiswaDTO.getNim(),
-                            mahasiswaDTO.getNama(),
-                            userAccount.getEmail(),
-                            (String) payload.get("picture"),
-                            userRoleDTO.getRole());
-                } else {
-                    throw new OAuth2AuthenticationProcessingException("Sorry! Login with role "
-                            + userRoleDTO.getRole() + " is not supported yet.");
-                }
-            }
-            throw new ScNotFoundException("User not found");
-            */
+            return new SigninResponse(accountEntity.getAccessToken(), accountEntity.getRefreshToken());
         } catch (ParseException e) {
             throw new RuntimeException(e);
+        } catch (AuthenticationException e) {
+            throw new AuthenticationExceptionImpl("email or password is wrong. email :" + email, e);
         }
-
-//        throw new BadRequestException("Not implemented yet");
     }
 
-    public String validateIdToken(String idToken) throws InvalidTokenException {
-        if (idToken != null) {
-            return googleTokenVerifier.verifyIdToken(idToken).getEmail();
-        }
-        throw new BadRequestException("Id Token cant be empty");
-    }
-
-    public boolean validateAccessToken(String accessToken) {
-//        try {
-//            AccessTokenResponse accessTokenResponse = googleApiClient.verifyAccessToken(accessToken);
-//            return accessTokenResponse != null;
-//        } catch (FeignException e) {
-        return false;
-//        }
-    }
-
-    public GoogleTokenResponse refreshAccessToken(String refreshToken) throws InvalidTokenException {
-        return googleTokenVerifier.refreshAccessToken(refreshToken);
-    }
-
-
-    public boolean revokeGoogleToken(String token) {
-//        try {
-//            //token can be access token or refresh token
-//            Map<String, String> headers = new HashMap<>();
-//            headers.put("Content-type", MediaType.APPLICATION_JSON_UTF8_VALUE);
-//            AccessTokenResponse accessTokenResponse = googleAccountApiClient.revokeToken(headers, token);
-//            return accessTokenResponse != null;
-//        } catch (FeignException e) {
-//            return false;
-//        }
-        return false;
-    }
-
-    /*public Authentication getAuthorization(String accessToken) throws FeignException, IOException {
-        AccessTokenResponse accessTokenResponse = googleApiClient.verifyAccessToken(accessToken);
-        UserRoleDTO userRoleDTO = roleService.getRoleByEmail(accessTokenResponse.getEmail());
-        UserAccountDTO userAccount = userAccountService.getDetailData(accessTokenResponse.getEmail());
-        List<UserRoleDTO> accountRoleList = new ArrayList<>();
-        accountRoleList.add(userRoleDTO);
-        //get credential
-        Credential credential = googleTokenVerifier.getGoogleCredential(accessToken);
-        credential.setRefreshToken(userAccount.getRefreshToken());
-
-        Collection<? extends GrantedAuthority> authorities = accountRoleList
-                .stream()
-                .map(authority -> new SimpleGrantedAuthority(authority.getRole()))
-                .collect(Collectors.toList());
-        return new UsernamePasswordAuthenticationToken(accessTokenResponse.getEmail(), credential, authorities);
-        throw new IOException("Not implemented yet");
-    }*/
-
-    public UserDetailsService userDetailsService() {
-        return username -> {
-            UserAccountEntity accountEntity = userAccountRepository.findByUsername(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-            return new CustomUserDetails(accountEntity);
-            /*return userRepository.findByEmail(username)
-                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));*/
-        };
-    }
+//    public UserDetailsService userDetailsService() {
+//        return username -> {
+//            UserAccountEntity accountEntity = userAccountRepository.findByUsername(username)
+//                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+//            return new CustomUserDetails(accountEntity);
+//        };
+//    }
 
     public Authentication getAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();
@@ -283,5 +155,97 @@ public class AuthService {
             }
         }
         return false;
+    }
+
+    public boolean canAccessFeature(String[] roles, Long[] permissions, HttpServletRequest httpServletRequest) {
+//        long id = Long.parseLong(httpServletRequest.getHeader("X-id"));
+//        UserAccountEntity userAccountEntity = userAccountRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        Authentication authentication = getAuthentication();
+        if (!(authentication instanceof AnonymousAuthenticationToken)) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            UserAccountEntity userAccountEntity = userDetails.getUserAccountEntity();
+
+            // match role from parameter and db, if match check permission
+            for (String role : roles) {
+                if (userAccountEntity.getGroups().stream().anyMatch(group -> group.getGroupname().equals(role))) {
+                    for (Long permission : permissions) {
+                        if (userAccountEntity.getGroups().stream().anyMatch(group -> group.hasPermission(permission))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public VerifyTokenDto isTokenValidAndNotExpired(String token) {
+        try {
+            String username = jwtService.extractUserName(token);
+            UserDetails userDetails = userAccountService.userDetailsService().loadUserByUsername(username);
+            if (userDetails == null || jwtService.isTokenExpired(token)) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Expired token");
+            }
+
+            Claims claims = jwtService.extractAllClaims(token);
+            int id = ((Double) claims.get("id")).intValue();
+            String role = String.valueOf(claims.get("role"));
+            int permission = ((Double) claims.get("permission")).intValue();
+
+            return VerifyTokenDto.builder().id(id).permission(permission).role(role).build();
+        } catch (JwtException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token format", e);
+        } catch (UsernameNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token owner is not available or has been deleted", e);
+        }
+    }
+
+    public String refreshAccessToken(String refreshToken) throws ParseException {
+        String username = jwtService.extractUserName(refreshToken);
+        UserDetails userDetails = userAccountService.userDetailsService().loadUserByUsername(username);
+//        Boolean debugres = jwtService.validateRefreshToken(refreshToken, userDetails);
+//        log.debug(String.valueOf(debugres));
+        if (jwtService.validateRefreshToken(refreshToken, userDetails)) {
+            return jwtService.generateToken(userDetails);
+        } else {
+            throw new JwtException("Invalid refresh token");
+        }
+    }
+
+    private void createTeacher(Long userId, SignUpRequest request) {
+        TeacherEntity teacherEntity = TeacherEntity.builder()
+                .userId(userId)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .phoneNumber(request.getPhoneNumber())
+                .nid(request.getNid())
+                .address(request.getAddress())
+                .city(request.getCity())
+                .region(request.getRegion())
+                .country(request.getCountry())
+                .zipCode(request.getZipCode())
+                .gender(request.getGender())
+                .googleScholar(request.getUrlGoogleScholar())
+                .build();
+        teacherService.save(teacherEntity);
+    }
+
+    private void createStudent(Long userId, SignUpRequest request) {
+        StudentEntity studentEntity = StudentEntity.builder()
+                .userId(userId)
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .nim(request.getNim())
+                .phoneNumber(request.getPhoneNumber())
+                .address(request.getAddress())
+                .city(request.getCity())
+                .region(request.getRegion())
+                .country(request.getCountry())
+                .zipCode(request.getZipCode())
+                .gender(request.getGender())
+                .build();
+        studentService.save(studentEntity);
     }
 }

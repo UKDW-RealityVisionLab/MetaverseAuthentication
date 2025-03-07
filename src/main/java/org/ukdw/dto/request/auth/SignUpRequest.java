@@ -6,23 +6,19 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * Project: SRM-BE
- * Package: com.srmbe.model.request.auth
- * <p>
- * Creator: dendy
- * Date: 8/5/2020
- * Time: 11:17 AM
- * <p>
- * Description : request dto for normal sign up. this type of sign up require no authcode.
- */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class SignUpRequest {
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import lombok.*;
 
+@Setter
+@Getter
+@NoArgsConstructor
+public class SignUpRequest {
     @NotBlank(message = "Email is required")
-    @Email(message = "Invalid email format")
+    @Pattern(
+            regexp = "^[a-zA-Z0-9._%+-]+@(staff|ti)\\.ukdw\\.ac\\.id$",
+            message = "Invalid email format. Make sure it's staff / ti email account"
+    )
     private String email;
 
     @NotBlank(message = "Password is required")
@@ -36,20 +32,25 @@ public class SignUpRequest {
     )
     private String username;
 
-    @NotBlank(message = "Name is required")
-    private String name;
-    private String imageUrl;
-    //registration number
     private String regNumber;
 
-    private String studentId;
-    private String teacherId;
-    private String dayOfBirth;
-    private String birthPlace;
+    @NotBlank(message = "scope is required (student, teacher)")
+    @Pattern(
+            regexp = "^(student|teacher)$",
+            message = "Scope must be either 'student' or 'teacher'."
+    )
+    private String scope;
+
+    private String firstName;
+    private String lastName;
+    private String phoneNumber;
+    private String nim; // untuk mahasiswa
+    private String nid; // untuk dosen
     private String address;
+    private String city;
+    private String region;
+    private String country;
+    private String zipCode;
     private String gender;
-    private String registerYear;
-    private String employmentNumber;
     private String urlGoogleScholar;
-//    private String role;
 }

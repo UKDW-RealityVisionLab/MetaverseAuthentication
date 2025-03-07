@@ -1,10 +1,3 @@
-/**
- * Author: dendy
- * Date:03/10/2024
- * Time:10:55
- * Description:
- */
-
 package org.ukdw.entity;
 
 import lombok.Getter;
@@ -24,9 +17,10 @@ public class CustomUserDetails implements UserDetails {
 
     public CustomUserDetails(UserAccountEntity userAccountEntity) {
         this.userAccountEntity = userAccountEntity;
+
         // Initialize authorities
         this.authorities = userAccountEntity.getGroups().stream()
-                .map(group -> new SimpleGrantedAuthority("ROLE_" + group.getGroupname().toUpperCase()))
+                .map(group -> new SimpleGrantedAuthority(group.getGroupname().toUpperCase()))
                 .collect(Collectors.toList());
     }
 
